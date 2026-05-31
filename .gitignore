@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+*.pkl
+*.joblib
+*.csv
+*.parquet
+*.xpt
+data/
+.env
+.DS_Store
+datasets/*
+related_docs/*
