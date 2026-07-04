@@ -59,9 +59,12 @@ def load_assets():
 def map_age(age: int) -> int:
     if age < 18:
         return 0
-    if age <= 24:
+    elif age <= 24:
         return 1
-    return (age - 18) // 5
+    elif age >= 80:
+        return 13
+    return (age // 5) - 3
+
 
 
 def map_education(education_level: str) -> int:
@@ -74,6 +77,15 @@ def map_education(education_level: str) -> int:
         "College graduate (4+ years)": 6,
     }
     return education_map.get(education_level, 0)
+
+def map_socioeconomic_tier(socioeconomic_tier: str) -> int:
+    socioeconomic_map = {
+        "Low (barely afford basic necessities)": 1,
+        "Middle (comfortably afford basic necessities)": 2,
+        "High (can afford luxury)": 3
+    }
+
+    return socioeconomic_map.get(socioeconomic_tier, 0)
 
 
 def clean_feature_name(name: str) -> str:
@@ -149,9 +161,9 @@ def build_form_inputs(source_df: pd.DataFrame) -> dict:
         if col == "age":
             inputs[col] = st.number_input(
                 "Age",
-                min_value=int(low),
-                max_value=int(high),
-                value=int(default),
+                min_value=18,
+                max_value=100,
+                value=28,
                 step=1,
             )
         elif col in {"height", "weight"}:
@@ -170,6 +182,12 @@ def build_form_inputs(source_df: pd.DataFrame) -> dict:
                 value=float(default),
                 step=1.0,
             )
+
+    source_df['has_personal_doctor'] = source_df['has_personal_doctor'].map({
+        'Yes, only one': 1, # Yes
+        'More than one': 1, # Yes
+        "No": 0 # No
+    })
 
     for col in binary_yes_no_cols:
         values = source_df[col].dropna()
@@ -263,6 +281,7 @@ st.write("This app mirrors the notebook workflow and uses the trained model plus
 
 st.session_state.setdefault("sample", False)
 model, explainer, training_df = load_assets()
+training_df['socioeconomic_tier'] = np.random.randint(1,4, len(training_df))
 
 with st.sidebar:
     st.header("Patient details")
