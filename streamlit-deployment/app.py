@@ -360,6 +360,14 @@ if "prediction_result" in st.session_state:
     st.subheader("Top SHAP contributors")
     st.dataframe(result["shap_df"].head(10), use_container_width=True)
 
+    st.subheader("SHAP Bar Plot")
+    plt.figure(figsize=(10,5))
+    shap_df = st.session_state["prediction_result"]["shap_df"]
+    shap_df["abs_shap"] = np.abs(shap_df["shap_value"])
+    top_10 = shap_df.sort_values(by="abs_shap").tail(10)
+    plt.barh(width=top_10.shap_value, y=top_10.feature)
+    st.pyplot(plt.gcf())
+
     st.subheader("SHAP waterfall")
     plt.figure(figsize=(10, 5))
     shap.plots.waterfall(result["shap_explanation"], max_display=10, show=False)
