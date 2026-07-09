@@ -6,12 +6,13 @@ import numpy as np
 import pandas as pd
 import shap
 import streamlit as st
+import json
 
 BASE_DIR = Path(__file__).resolve().parent
 REPO_ROOT = BASE_DIR.parent
 MODEL_PATH = REPO_ROOT / "model_building" / "models" / "lgbm_model.pkl"
 EXPLAINER_PATH = REPO_ROOT / "model_building" / "models" / "shap_explainer.pkl"
-DATASET_PATH = REPO_ROOT / "datasets" / "cleaned_data.csv"
+DATASET_PATH = REPO_ROOT / "streamlit-deployment" / "cat-values.json"
 
 FEATURE_FIELDS = [
     "age",
@@ -38,22 +39,23 @@ FEATURE_FIELDS = [
     "socioeconomic_tier",
 ]
 
-EDUCATION_LEVELS = [
-    "None or KG",
-    "Elementary (1-8)",
-    "Some high school (9-11)",
-    "High school graduate (12 or GED)",
-    "Some college (1-3 years) or Technical school",
-    "College graduate (4+ years)",
-]
+# EDUCATION_LEVELS = [
+#     "None or KG",
+#     "Elementary (1-8)",
+#     "Some high school (9-11)",
+#     "High school graduate (12 or GED)",
+#     "Some college (1-3 years) or Technical school",
+#     "College graduate (4+ years)",
+# ]
 
 
 @st.cache_resource(show_spinner=False)
 def load_assets():
     model = joblib.load(MODEL_PATH)
     explainer = joblib.load(EXPLAINER_PATH)
-    data = pd.read_csv(DATASET_PATH)
-    return model, explainer, data
+    with open(DATASET_PATH, 'r') as f:
+        cat_values = json.load(f)
+    return model, explainer, cat_values
 
 
 def map_age(age: int) -> int:
@@ -126,7 +128,7 @@ def clean_feature_name(name: str) -> str:
     return mapping.get(clean, clean)
 
 
-def build_form_inputs(source_df: pd.DataFrame) -> dict:
+def build_form_inputs(cat_values_json: json) -> dict:
     inputs = {}
 
     numeric_cols = [
@@ -137,91 +139,55 @@ def build_form_inputs(source_df: pd.DataFrame) -> dict:
         "gen_health",
         "physical_health_days",
         "mental_health_days",
-        "socioeconomic_tier",
+        "l_checkup"
     ]
-    binary_yes_no_cols = [
+    binary_cols = [
         "smoked_100_cigarettes",
         "drinks_alcohol",
         "had_coronary_heart_disease",
         "cost_barrier",
-        "l_checkup",
         "had_stroke",
         "had_heart_attack",
         "has_personal_doctor",
     ]
-    categorical_cols = ["sex", "marital_status", "employment_status", "exercise", "high_bp"]
+    categorical_cols = ["sex", "marital_status", "employment_status", "exercise", "high_bp", "socioeconomic_tier"]
 
-    for col in numeric_cols:
-        values = source_df[col].dropna()
-        if values.empty:
+    for cat in numeric_cols:
+        values = cat_values_json.get(cat)
+        if len(values)==0:
             continue
-        low = float(values.min())
-        high = float(values.max())
-        default = float(values.median())
-        if col == "age":
-            inputs[col] = st.number_input(
-                "Age",
-                min_value=18,
-                max_value=100,
-                value=28,
-                step=1,
-            )
-        elif col in {"height", "weight"}:
-            inputs[col] = st.number_input(
-                col.capitalize(),
-                min_value=float(low),
-                max_value=float(high),
-                value=float(default),
-                step=1.0,
-            )
-        else:
-            inputs[col] = st.number_input(
-                col.replace("_", " ").title(),
-                min_value=float(low),
-                max_value=float(high),
-                value=float(default),
-                step=1.0,
-            )
+        low = values[0] # the first value is the lower limit
+        high = values[1] # the second value is the upper limit
+        default = (values[0] + values[1]) // 2 # set default as the mean of upper and lower limits
+        inputs[cat] = st.number_input(
+            cat.replace("_", " ").title(),
+            min_value=low,
+            max_value=high,
+            value=default,
+            step=1,
+        )
 
-    source_df['has_personal_doctor'] = source_df['has_personal_doctor'].map({
-        'Yes, only one': 1, # Yes
-        'More than one': 1, # Yes
-        "No": 0 # No
-    })
-
-    for col in binary_yes_no_cols:
-        values = source_df[col].dropna()
-        if values.empty:
+    for cat in binary_cols:
+        values = cat_values_json.get(cat)
+        if len(values)==0:
             continue
-        default = "Yes" if int(values.mode().iloc[0]) == 1 else "No"
-        inputs[col] = st.radio(
-            col.replace("_", " ").title(),
+        default = "No"
+        inputs[cat] = st.radio(
+            cat.replace("_", " ").title(),
             ["No", "Yes"],
-            index=0 if default == "No" else 1,
+            index=0,
             horizontal=True,
         )
 
-    for col in categorical_cols:
-        values = [str(v) for v in source_df[col].dropna().unique() if str(v) != "nan"]
-        if values:
+    for cat in categorical_cols:
+        values = cat_values_json.get(cat)
+        if len(values) != 0:
             default = values[0]
-            if col == "sex":
-                default = "Male"
-            elif col == "marital_status":
-                default = "Married/Cohabiting"
-            elif col == "employment_status":
-                default = "Employed"
-            elif col == "exercise":
-                default = "False"
-            elif col == "high_bp":
-                default = "No"
-            inputs[col] = st.selectbox(
-                col.replace("_", " ").title(),
+            inputs[cat] = st.selectbox(
+                cat.replace("_", " ").title(),
                 values,
                 index=values.index(default) if default in values else 0,
             )
-
-    inputs["education"] = st.selectbox("Education", EDUCATION_LEVELS, index=0)
     return inputs
 
 
@@ -230,9 +196,11 @@ def build_input_frame(user_inputs: dict) -> pd.DataFrame:
     input_df["bmi"] = input_df["weight"] / ((input_df["height"] / 100) ** 2)
     input_df["age"] = input_df["age"].apply(map_age)
     input_df["education"] = input_df["education"].apply(map_education)
+    input_df["socioeconomic_tier"] = input_df["socioeconomic_tier"].apply(map_socioeconomic_tier)
 
     for col in [
         "smoked_100_cigarettes",
+        "exercise",
         "drinks_alcohol",
         "had_coronary_heart_disease",
         "cost_barrier",
@@ -280,8 +248,8 @@ st.title("Diabetes Risk Predictor")
 st.write("This app mirrors the notebook workflow and uses the trained model plus SHAP explanations.")
 
 st.session_state.setdefault("sample", False)
-model, explainer, training_df = load_assets()
-training_df['socioeconomic_tier'] = np.random.randint(1,4, len(training_df))
+model, explainer, cat_values_json = load_assets()
+# training_df['socioeconomic_tier'] = np.random.randint(1,4, len(training_df))
 
 with st.sidebar:
     st.header("Patient details")
@@ -314,23 +282,24 @@ with st.sidebar:
             "socioeconomic_tier": 1,
         }
     else:
-        user_inputs = build_form_inputs(training_df)
+        user_inputs = build_form_inputs(cat_values_json)
 
     # Keep the app responsive and aligned with the notebook input schema.
     user_inputs = {k: user_inputs.get(k, None) for k in FEATURE_FIELDS}
 
     with st.expander("Data-driven value ranges and categories"):
         numeric_summary = []
-        for col in ["age", "height", "weight", "income", "gen_health", "physical_health_days", "mental_health_days", "socioeconomic_tier"]:
-            values = training_df[col].dropna()
-            if not values.empty:
-                numeric_summary.append(f"{col}: {float(values.min()):.0f} to {float(values.max()):.0f}")
+        for col in ["age", "height", "weight", "income", "gen_health", "physical_health_days", "mental_health_days"]:
+            values = cat_values_json.get(col)
+            print(values)
+            if len(values)!=0:
+                numeric_summary.append(f"{col}: {values[0]:.0f} to {values[1]:.0f}")
         st.write("Numeric ranges")
         st.write("\n".join(numeric_summary))
         st.write("")
         st.write("Categorical values")
-        for col in ["sex", "marital_status", "employment_status", "exercise", "high_bp"]:
-            values = [str(v) for v in training_df[col].dropna().unique() if str(v) != "nan"]
+        for col in ["sex", "marital_status", "employment_status", "exercise", "high_bp", "socioeconomic_tier"]:
+            values = [str(v) for v in cat_values_json[col] if str(v) != "nan"]
             st.write(f"- {col.replace('_', ' ').title()}: {', '.join(values)}")
 
     if st.button("Predict"):

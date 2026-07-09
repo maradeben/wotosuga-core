@@ -8,5 +8,5 @@ __pycache__/
 data/
 .env
 .DS_Store
-datasets/*
+datasets/DATASET_*.csv
 related_docs/*

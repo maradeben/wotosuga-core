@@ -1,0 +1,32 @@
+{
+  "chart": {
+    "title": "PPP conversion factor for private consumption",
+    "citation": "ICP, Eurostat PPP Programme, and OECD PPP Programme, via World Bank (2026)",
+    "originalChartUrl": "https://ourworldindata.org/grapher/ppp-conversion-factor-for-private-consumption?v=1&csvType=full&useColumnShortNames=false",
+    "selection": [
+      "South Africa",
+      "Namibia",
+      "Australia",
+      "Germany"
+    ]
+  },
+  "columns": {
+    "PPP conversion factor, private consumption (LCU per international $)": {
+      "titleShort": "PPP conversion factor, private consumption (LCU per international $)",
+      "titleLong": "PPP conversion factor, private consumption (LCU per international $)",
+      "shortUnit": "LCU",
+      "unit": "LCU per international $",
+      "timespan": "1990-2024",
+      "type": "Numeric",
+      "owidVariableId": 1204867,
+      "shortName": "pa_nus_prvt_pp",
+      "lastUpdated": "2026-02-27",
+      "nextUpdate": "2027-02-27",
+      "citationShort": "ICP, Eurostat PPP Programme, and OECD PPP Programme, via World Bank (2026) – processed by Our World in Data",
+      "citationLong": "ICP, Eurostat PPP Programme, and OECD PPP Programme, via World Bank (2026) – processed by Our World in Data. “PPP conversion factor, private consumption (LCU per international $)” [dataset]. ICP, Eurostat PPP Programme, and OECD PPP Programme, via World Bank, “World Development Indicators 125” [original data].",
+      "fullMetadata": "https://api.ourworldindata.org/v1/indicators/1204867.metadata.json"
+    }
+  },
+  "dateDownloaded": "2026-06-19",
+  "activeFilters": {}
+}
