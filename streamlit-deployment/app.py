@@ -288,20 +288,21 @@ else:
 # Keep the app responsive and aligned with the notebook input schema.
 user_inputs = {k: user_inputs.get(k, None) for k in FEATURE_FIELDS}
 
-with st.expander("Data-driven value ranges and categories"):
-    numeric_summary = []
-    for col in ["age", "height", "weight", "income", "gen_health", "physical_health_days", "mental_health_days"]:
-        values = cat_values_json.get(col)
-        print(values)
-        if len(values)!=0:
-            numeric_summary.append(f"{col}: {values[0]:.0f} to {values[1]:.0f}")
-    st.write("Numeric ranges")
-    st.write("\n".join(numeric_summary))
-    st.write("")
-    st.write("Categorical values")
-    for col in ["sex", "marital_status", "employment_status", "exercise", "high_bp", "socioeconomic_tier"]:
-        values = [str(v) for v in cat_values_json[col] if str(v) != "nan"]
-        st.write(f"- {col.replace('_', ' ').title()}: {', '.join(values)}")
+with st.sidebar:
+    with st.expander("Data-driven value ranges and categories"):
+        numeric_summary = []
+        for col in ["age", "height", "weight", "income", "gen_health", "physical_health_days", "mental_health_days"]:
+            values = cat_values_json.get(col)
+            print(values)
+            if len(values)!=0:
+                numeric_summary.append(f"{col}: {values[0]:.0f} to {values[1]:.0f}")
+        st.write("Numeric ranges")
+        st.write("\n".join(numeric_summary))
+        st.write("")
+        st.write("Categorical values")
+        for col in ["sex", "marital_status", "employment_status", "exercise", "high_bp", "socioeconomic_tier"]:
+            values = [str(v) for v in cat_values_json[col] if str(v) != "nan"]
+            st.write(f"- {col.replace('_', ' ').title()}: {', '.join(values)}")
 
 if st.button("Predict"):
     input_df = build_input_frame(user_inputs)
@@ -345,4 +346,5 @@ if "prediction_result" in st.session_state:
     shap.plots.waterfall(result["shap_explanation"], max_display=10, show=False)
     st.pyplot(plt.gcf())
 else:
-    st.info("Use the sidebar to enter values and click Predict.")
+    st.info("Note: Physical/Mental Health Days refer to days of poor physical/mental health in the past 30 days.\n" \
+    "See sidebar for more form details.")
