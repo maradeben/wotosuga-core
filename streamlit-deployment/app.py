@@ -150,7 +150,7 @@ def build_form_inputs(cat_values_json: json) -> dict:
         "had_heart_attack",
         "has_personal_doctor",
     ]
-    categorical_cols = ["sex", "marital_status", "employment_status", "exercise", "high_bp", "socioeconomic_tier"]
+    categorical_cols = ["sex", "marital_status", "education", "employment_status", "exercise", "high_bp", "socioeconomic_tier"]
 
     for cat in numeric_cols:
         values = cat_values_json.get(cat)
@@ -251,73 +251,76 @@ st.session_state.setdefault("sample", False)
 model, explainer, cat_values_json = load_assets()
 # training_df['socioeconomic_tier'] = np.random.randint(1,4, len(training_df))
 
-with st.sidebar:
-    st.header("Patient details")
-    if st.button("Use sample values"):
-        st.session_state["sample"] = True
+# with st.sidebar:
+# sidebar start
+st.header("Patient details")
+if st.button("Use sample values"):
+    st.session_state["sample"] = True
 
-    if st.session_state.get("sample"):
-        user_inputs = {
-            "age": 52,
-            "height": 175,
-            "weight": 80,
-            "education": "None or KG",
-            "income": 8,
-            "gen_health": 4,
-            "physical_health_days": 5,
-            "mental_health_days": 3,
-            "smoked_100_cigarettes": 1,
-            "drinks_alcohol": 1,
-            "had_coronary_heart_disease": 0,
-            "cost_barrier": 0,
-            "l_checkup": 1,
-            "had_stroke": 0,
-            "had_heart_attack": 0,
-            "has_personal_doctor": 1,
-            "sex": "Male",
-            "marital_status": "Married/Cohabiting",
-            "employment_status": "Employed",
-            "exercise": "False",
-            "high_bp": "No",
-            "socioeconomic_tier": 1,
-        }
-    else:
-        user_inputs = build_form_inputs(cat_values_json)
+if st.session_state.get("sample"):
+    user_inputs = {
+        "age": 52,
+        "height": 175,
+        "weight": 80,
+        "education": "None or KG",
+        "income": 8,
+        "gen_health": 4,
+        "physical_health_days": 5,
+        "mental_health_days": 3,
+        "smoked_100_cigarettes": 1,
+        "drinks_alcohol": 1,
+        "had_coronary_heart_disease": 0,
+        "cost_barrier": 0,
+        "l_checkup": 1,
+        "had_stroke": 0,
+        "had_heart_attack": 0,
+        "has_personal_doctor": 1,
+        "sex": "Male",
+        "marital_status": "Married/Cohabiting",
+        "employment_status": "Employed",
+        "exercise": "False",
+        "high_bp": "No",
+        "socioeconomic_tier": 1,
+    }
+else:
+    user_inputs = build_form_inputs(cat_values_json)
 
-    # Keep the app responsive and aligned with the notebook input schema.
-    user_inputs = {k: user_inputs.get(k, None) for k in FEATURE_FIELDS}
+# Keep the app responsive and aligned with the notebook input schema.
+user_inputs = {k: user_inputs.get(k, None) for k in FEATURE_FIELDS}
 
-    with st.expander("Data-driven value ranges and categories"):
-        numeric_summary = []
-        for col in ["age", "height", "weight", "income", "gen_health", "physical_health_days", "mental_health_days"]:
-            values = cat_values_json.get(col)
-            print(values)
-            if len(values)!=0:
-                numeric_summary.append(f"{col}: {values[0]:.0f} to {values[1]:.0f}")
-        st.write("Numeric ranges")
-        st.write("\n".join(numeric_summary))
-        st.write("")
-        st.write("Categorical values")
-        for col in ["sex", "marital_status", "employment_status", "exercise", "high_bp", "socioeconomic_tier"]:
-            values = [str(v) for v in cat_values_json[col] if str(v) != "nan"]
-            st.write(f"- {col.replace('_', ' ').title()}: {', '.join(values)}")
+with st.expander("Data-driven value ranges and categories"):
+    numeric_summary = []
+    for col in ["age", "height", "weight", "income", "gen_health", "physical_health_days", "mental_health_days"]:
+        values = cat_values_json.get(col)
+        print(values)
+        if len(values)!=0:
+            numeric_summary.append(f"{col}: {values[0]:.0f} to {values[1]:.0f}")
+    st.write("Numeric ranges")
+    st.write("\n".join(numeric_summary))
+    st.write("")
+    st.write("Categorical values")
+    for col in ["sex", "marital_status", "employment_status", "exercise", "high_bp", "socioeconomic_tier"]:
+        values = [str(v) for v in cat_values_json[col] if str(v) != "nan"]
+        st.write(f"- {col.replace('_', ' ').title()}: {', '.join(values)}")
 
-    if st.button("Predict"):
-        input_df = build_input_frame(user_inputs)
-        prediction = model.predict(input_df)
-        proba = model.predict_proba(input_df)
-        prob_diabetic = float(proba[0][1])
-        predicted_class = "Diabetic" if prediction[0] == 1 else "Non-diabetic"
+if st.button("Predict"):
+    input_df = build_input_frame(user_inputs)
+    prediction = model.predict(input_df)
+    proba = model.predict_proba(input_df)
+    prob_diabetic = float(proba[0][1])
+    predicted_class = "Diabetic" if prediction[0] == 1 else "Non-diabetic"
 
-        shap_df, shap_explanation = explain_prediction(model, explainer, input_df)
+    shap_df, shap_explanation = explain_prediction(model, explainer, input_df)
 
-        st.session_state["prediction_result"] = {
-            "predicted_class": predicted_class,
-            "prob_diabetic": prob_diabetic,
-            "shap_df": shap_df,
-            "shap_explanation": shap_explanation,
-            "base_value": float(explainer.expected_value),
-        }
+    st.session_state["prediction_result"] = {
+        "predicted_class": predicted_class,
+        "prob_diabetic": prob_diabetic,
+        "shap_df": shap_df,
+        "shap_explanation": shap_explanation,
+        "base_value": float(explainer.expected_value),
+    }
+
+# sidebar end
 
 if "prediction_result" in st.session_state:
     result = st.session_state["prediction_result"]
