@@ -19,7 +19,6 @@ FEATURE_FIELDS = [
     "height",
     "weight",
     "education",
-    "income",
     "gen_health",
     "physical_health_days",
     "mental_health_days",
@@ -80,6 +79,16 @@ def map_education(education_level: str) -> int:
     }
     return education_map.get(education_level, 0)
 
+def map_l_checkup(l_checkup: str) -> int:
+    l_checkup_map = {
+        "Never": 1,
+        "5 or more years ago": 2,
+        "Within the past 5 years (2 to <5 years ago)": 3,
+        "Within the past 2 years (1 to <2 years ago": 4,
+        "Within the past year (< 12 months ago)": 5
+    }
+    return l_checkup_map.get(l_checkup, 0)
+
 def map_socioeconomic_tier(socioeconomic_tier: str) -> int:
     socioeconomic_map = {
         "Low (barely afford basic necessities)": 1,
@@ -96,7 +105,6 @@ def clean_feature_name(name: str) -> str:
         "age": "Age",
         "bmi": "Body Mass Index (BMI)",
         "education": "Education Level",
-        "income": "Income Level",
         "gen_health": "General Health Self-Rating",
         "physical_health_days": "Physical Health (Recent Bad Days)",
         "mental_health_days": "Mental Health (Recent Bad Days)",
@@ -104,7 +112,6 @@ def clean_feature_name(name: str) -> str:
         "drinks_alcohol": "Alcohol Consumption",
         "had_stroke": "History of Stroke",
         "had_heart_attack": "History of Heart Attack",
-        "had_coronary_heart_disease": "History of Coronary Heart Disease",
         "cost_barrier": "Healthcare Cost Barrier",
         "l_checkup": "Time Since Last Medical Checkup",
         "has_personal_doctor": "Has Personal Healthcare Provider",
@@ -135,22 +142,20 @@ def build_form_inputs(cat_values_json: json) -> dict:
         "age",
         "height",
         "weight",
-        "income",
         "gen_health",
         "physical_health_days",
-        "mental_health_days",
-        "l_checkup"
+        "mental_health_days"
     ]
     binary_cols = [
         "smoked_100_cigarettes",
         "drinks_alcohol",
-        "had_coronary_heart_disease",
         "cost_barrier",
         "had_stroke",
         "had_heart_attack",
         "has_personal_doctor",
     ]
-    categorical_cols = ["sex", "marital_status", "education", "employment_status", "exercise", "high_bp", "socioeconomic_tier"]
+    categorical_cols = ["sex", "marital_status", "education", "employment_status", "exercise",
+                        "l_checkup", "high_bp", "socioeconomic_tier"]
 
     for cat in numeric_cols:
         values = cat_values_json.get(cat)
@@ -195,6 +200,7 @@ def build_input_frame(user_inputs: dict) -> pd.DataFrame:
     input_df = pd.DataFrame([user_inputs])
     input_df["bmi"] = input_df["weight"] / ((input_df["height"] / 100) ** 2)
     input_df["age"] = input_df["age"].apply(map_age)
+    input_df["l_checkup"] = input_df["l_checkup"].apply(map_l_checkup)
     input_df["education"] = input_df["education"].apply(map_education)
     input_df["socioeconomic_tier"] = input_df["socioeconomic_tier"].apply(map_socioeconomic_tier)
 
@@ -202,7 +208,6 @@ def build_input_frame(user_inputs: dict) -> pd.DataFrame:
         "smoked_100_cigarettes",
         "exercise",
         "drinks_alcohol",
-        "had_coronary_heart_disease",
         "cost_barrier",
         "l_checkup",
         "had_stroke",
@@ -263,13 +268,11 @@ if st.session_state.get("sample"):
         "height": 175,
         "weight": 80,
         "education": "None or KG",
-        "income": 8,
         "gen_health": 4,
         "physical_health_days": 5,
         "mental_health_days": 3,
         "smoked_100_cigarettes": 1,
         "drinks_alcohol": 1,
-        "had_coronary_heart_disease": 0,
         "cost_barrier": 0,
         "l_checkup": 1,
         "had_stroke": 0,
@@ -291,9 +294,8 @@ user_inputs = {k: user_inputs.get(k, None) for k in FEATURE_FIELDS}
 with st.sidebar:
     with st.expander("Data-driven value ranges and categories"):
         numeric_summary = []
-        for col in ["age", "height", "weight", "income", "gen_health", "physical_health_days", "mental_health_days"]:
+        for col in ["age", "height", "weight", "gen_health", "physical_health_days", "mental_health_days"]:
             values = cat_values_json.get(col)
-            print(values)
             if len(values)!=0:
                 numeric_summary.append(f"{col}: {values[0]:.0f} to {values[1]:.0f}")
         st.write("Numeric ranges")
